@@ -102,9 +102,8 @@ class Vector(object):
         if len(self.vect) != len(vect):
             raise ValueError("Argument must be in {} Vector Space".format(len(self)))
         squares =[]
-        for a in self.vect:
-            for b in vect.vect:
-                squares.append((b-a)**2)
+        for i, a in enumerate(self.vect):
+                squares.append((vect[i]-a)**2)
         return math.sqrt(self._kahun_sum(squares))
 
 
@@ -165,6 +164,7 @@ class Vector2D(Vector):
 
         self.x = args[0]
         self.y = args[1]
+        self.random_theta = random.uniform(0, 2*math.pi)
 
     def add(self, b):
         b = Vector(*b())
@@ -200,13 +200,13 @@ class Vector2D(Vector):
         return super().distance(b)
 
     def getTheta(self):
-        theta = self.get_theta_between(Vector(0, -1))
-        if self.x < 0 and self.y <0:
+        theta = self.get_theta_between(Vector(1, 0))
+        if self.x < 0 and self.y < 0:
+            theta *= -1
+        elif self.x > 0 and self.y < 0:
+            theta *= -1
+        elif self.x > 0 and self.y > 0:
             pass
-        elif self.x >0 and self.y < 0:
-            theta *= -1
-        elif self.x >0 and self.y > 0:
-            theta *= -1
         elif self.x <0 and self.y > 0:
             pass
         return theta
@@ -216,14 +216,15 @@ class Vector2D(Vector):
         return Vector2D(0, 0)
 
 
-    @staticmethod
-    def random_vector():
+    def random_vector(self):
         random.seed()
-        x = random.random()
-        y = random.random()
-        x *= random.randrange(-1, 2)
-        y *= random.randrange(-1, 2)
-        return Vector2D(x, y)
+        pivot = self.random_theta
+
+        theta = random.triangular(pivot - math.pi/8, pivot + math.pi/8, pivot)
+
+        self.random_theta = theta
+
+        return Vector2D(math.cos(theta), math.sin(theta))
 
 
 
