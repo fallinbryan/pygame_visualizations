@@ -12,7 +12,7 @@ random.seed()
 class DNA(object):
     def __init__(self, lifespan=None, genes=None):
         if not lifespan:
-            self.lifespan = 800
+            self.lifespan = 300
         else:
             self.lifespan = lifespan
         if genes:
@@ -63,6 +63,7 @@ class DNA(object):
 
 
 class Rocket(object):
+    target = None
     def __init__(self, surface, target, dna=None, start=None ):
         self.surface = surface
         self.target = target
@@ -311,12 +312,12 @@ if __name__ == '__main__':
     disp_w = 1500
     disp_h = 800
 
-    canvas = pg.display.set_mode((0, 0), pg.FULLSCREEN)
+    canvas = pg.display.set_mode((disp_w, disp_h))
     canvas.fill(disp_bg_color)
     WIDTH = canvas.get_width()
     HEIGHT = canvas.get_height()
     target = Vector2D(WIDTH * 0.5, HEIGHT * 0.5)
-    population = Population(canvas, 50, target)
+    population = Population(canvas, 100, target)
 
     isGrabbed = False
     while  True:
