@@ -164,7 +164,7 @@ class Vector2D(Vector):
 
         self.x = args[0]
         self.y = args[1]
-        self.random_theta = random.uniform(0, 2*math.pi)
+        self.seed = math.atan2(self.x, self.y)
 
     def add(self, b):
         b = Vector(*b())
@@ -216,13 +216,16 @@ class Vector2D(Vector):
         return Vector2D(0, 0)
 
 
-    def random_vector(self):
+    def random_vector(self, delta=None):
+        if not delta:
+            delta = math.pi/6
+
         random.seed()
-        pivot = self.random_theta
+        pivot = self.seed
 
-        theta = random.triangular(pivot - math.pi/8, pivot + math.pi/8, pivot)
+        theta = random.triangular(pivot - delta, pivot + delta, pivot)
 
-        self.random_theta = theta
+        self.seed = theta
 
         return Vector2D(math.cos(theta), math.sin(theta))
 
