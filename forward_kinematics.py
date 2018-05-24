@@ -298,10 +298,9 @@ if __name__ == '__main__':
     HEIGHT = canvas.get_height()
 
     pos = Vector2D(WIDTH/2, HEIGHT/2)
-    arm = Armature(canvas, pos, 20, 0.5, 25, -math.pi/2)
+    arm = Armature(canvas, pos, 10, 0.5, 25, -math.pi/2)
 
-    seg = Segment(canvas, base=pos, length=10, theta=math.pi/2,
-                  )
+    seg = Segment(canvas, base=pos, length=10, theta=math.pi/2)
     while True:
         # pg.time.wait(100)
         for event in pg.event.get():
