@@ -9,8 +9,8 @@ class Physics(object):
         self.mass = 0.0
 
     def update(self):
-        self.velocity = self.velocity.add(self.acceleration)
         self.position = self.position.add(self.velocity)
+        self.velocity = self.velocity.add(self.acceleration)
         self.acceleration.mul(0)
 
     def apply_force(self, force):

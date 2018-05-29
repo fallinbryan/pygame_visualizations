@@ -9,6 +9,30 @@ from Physics import Physics
 
 random.seed()
 
+class Compass(object):
+    def __init__(self, surface, pos, title=None):
+        self.surface = surface
+        self.heading = 0
+        self.pos = pos
+        self.radius = 48
+        if title:
+            self.title = title
+        else:
+            self.title = 'Compass'
+    def show(self, heading):
+        font = pg.font.SysFont('Comic Sans MS', 12)
+        self.heading = heading
+        pg.draw.circle(self.surface, (255,255,255), self.pos.floor()(), self.radius + 5, 1)
+        x = self.pos.x + self.radius * math.cos(heading)
+        y = self.pos.y + self.radius * math.sin(heading)
+        end = Vector2D(x, y)
+        pg.draw.line(self.surface, (255, 255, 255), self.pos(), end(), 1)
+        title_text = font.render(self.title, True, (255,255,255))
+
+
+        self.surface.blit(title_text, (self.pos.x - self.radius, self.pos.y + self.radius + 10))
+
+
 
 class DNA(object):
     def __init__(self, lifespan=None, genes=None):
@@ -32,29 +56,43 @@ class DNA(object):
 
 
 class Creature(Physics):
+    color_map = {'wandering': (242, 145, 247),
+                 'seeking food': (91, 242, 67),
+                 'seeking mate': (255, 178, 178)}
     def __init__(self, surface, pos, dna):
         super().__init__()
         self.surface = surface
         self.position = pos
         self.dna = dna
-        self.energy = 1000.0
+        self.energy = 500.0
         self.age = 1.0
         self.alive = True
         self.sex = random.choice(['male', 'female'])
-        self.max_speed = 0.1
+        self.max_speed = 20
+        self.prev_acc = Vector2D(0, 0)
+        self.state = "wandering"
+
+    def apply_force(self, force):
+        super().apply_force(force)
+        self.prev_acc = force
 
     def seek(self, target):
         desired = target.position.sub(self.position)
         desired = desired.normalize()
         desired = desired.mul(self.position.distance(target.position))
-        error = desired.sub(self.velocity)
+        force = desired.sub(self.velocity)
 
-        return error
+        return force
 
     def test_seek(self, target):
         force = self.seek(target)
-        force.set_magnitude(.01)
+        # force.set_magnitude(1)
         self.apply_force(force)
+        mag = self.position.distance(target.position)*0.5
+        self.velocity.set_magnitude(mag)
+
+        if self.velocity.magnitude() > self.max_speed:
+            self.velocity.set_magnitude(self.max_speed)
 
     def seek_nearest(self, targets):
         min_dist = 9999999
@@ -66,7 +104,7 @@ class Creature(Physics):
                     target = _target
         force = self.seek(target)
         found = None
-        if self.position.distance(target.position) < 25:
+        if self.position.distance(target.position) < 50:
             found = target
 
         return force, found
@@ -80,19 +118,20 @@ class Creature(Physics):
         return Creature(self.surface, self.position, new_dna)
 
     def wander(self):
+
         x_max = self.surface.get_width()
         y_max = self.surface.get_height()
         class target:
             position = Vector2D(x_max/2, y_max/2)
         force = self.velocity.random_vector(math.pi)
         force.set_magnitude(0.01)
-        if self.position.x in range(0, 50):
+        if int(self.position.x) in range(0, 100):
             force = self.seek(target)
-        elif self.position.x in range (x_max - 50, x_max):
+        elif int(self.position.x) in range (x_max - 100, x_max):
             force = self.seek(target)
-        if self.position.y in range(0, 50):
+        if int(self.position.y) in range(0, 500):
             force = self.seek(target)
-        elif self.position.y in range(y_max - 50, y_max):
+        elif int(self.position.y) in range(y_max - 100, y_max):
             force = self.seek(target)
 
         return force
@@ -102,7 +141,7 @@ class Creature(Physics):
     def C_update(self, environment):
         if self.energy == 0:
             self.alive = False
-        if self.age > 1000.0:
+        if self.age > 5000.0:
             self.alive = False
 
         if self.alive:
@@ -110,14 +149,19 @@ class Creature(Physics):
             self.age += 0.5
 
             if self.energy < 100:
+                self.state = "seeking food"
                 force, found = self.seek_nearest(environment['food'])
                 if found:
                     self.eat_food(found)
-            elif self.age > 25:
+
+            elif self.age > 500 and self.energy > 100:
+                self.state = "seeking mate"
                 force, found = self.seek_nearest(environment['creatures'])
                 if found:
                     self.breed(found.dna)
+                    self.alive = False
             else:
+                self.state = 'wandering'
                 force = self.wander()
 
 
@@ -127,10 +171,11 @@ class Creature(Physics):
                 self.velocity.set_magnitude(self.max_speed)
 
     def draw(self):
-        if self.sex == "male":
-            color = (150, 150, 255)
-        else:
-            color = (255, 150, 150)
+        color = self.color_map[self.state]
+        # if self.sex == "male":
+        #     color = (150, 150, 255)
+        # else:
+        #     color = (255, 150, 150)
         pointlist = []
         pointlist.append((int(self.position.x + 25*math.cos(self.velocity.getTheta())), int(self.position.y + 25*math.sin(self.velocity.getTheta()))))
         pointlist.append((int(self.position.x - 15*math.cos(self.velocity.getTheta())), int(self.position.y - 15*math.sin(self.velocity.getTheta()))))
@@ -162,12 +207,12 @@ if __name__ == '__main__':
     HEIGHT = canvas.get_height()
 
     # environment = {"food": [Food(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)) for _ in range(100)],
-    #                "creatures": [Creature(canvas, Vector2D(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)), DNA()) for _ in range(20)]}
+    #                "creatures": [Creature(canvas, Vector2D(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)), DNA()) for _ in range(10)]}
 
     # environment = {"food": [Food(WIDTH/2, HEIGHT/2) for _ in range(1)],
     #                "creatures": [
     #                    Creature(canvas, Vector2D(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)), DNA()) for _
-    #                    in range(2)]}
+    #                    in range(10)]}
 
     class Target:
         def __init__(self):
@@ -176,6 +221,7 @@ if __name__ == '__main__':
             self.position = Vector2D(arg[0],arg[1])
     target = Target()
     creature = Creature(canvas, Vector2D(WIDTH/2, HEIGHT/2), DNA())
+    compass = Compass(canvas, Vector2D(WIDTH*0.1, HEIGHT*0.1), 'Creature Heading')
     isGrabbed = False
     while  True:
         # pg.time.wait(100)
@@ -220,13 +266,15 @@ if __name__ == '__main__':
         creature.test_seek(target)
         creature.update()
         creature.draw()
-
+        compass.show(creature.velocity.getTheta())
         heading_text = font.render('Heading: {:.02f}  Velocity: {:.02f}'.format(creature.velocity.getTheta() * 180 / math.pi,
                                                               creature.velocity.magnitude()), False, (255, 255, 255))
         distance_text = font.render('Distance to target {:.02f}'.format(creature.position.distance(target.position)), False, (255, 255, 255))
+        accell_text = font.render('Applied acceleration: ({:.02f},{:.02f})'.format(creature.prev_acc.x, creature.prev_acc.y), False, (255, 255, 255))
 
         canvas.blit(heading_text, (WIDTH - 500, HEIGHT - 200))
         canvas.blit(distance_text, (WIDTH - 500, HEIGHT - 150))
+        canvas.blit(accell_text, (WIDTH - 500, HEIGHT - 100))
         pg.display.flip()
 
         pg.time.delay(100)

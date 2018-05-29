@@ -57,12 +57,13 @@ class Vector(object):
         return r_sum
 
     def normalize(self):
+        copy = Vector(*self())
         if self.magnitude() == 0:
             return Vector(*[0 for _ in self.vect])
-        return Vector(*[a / self.magnitude() for a in self.vect])
+        return Vector(*[a / self.magnitude() for a in copy])
 
     def magnitude(self):
-        squares = [a ** 2 for a in self.vect]
+        squares = [a**2 for a in self.vect]
         return math.sqrt(self._kahun_sum(squares))
 
     def is_orthogonal_to(self, vect):
