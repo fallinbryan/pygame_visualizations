@@ -64,9 +64,9 @@ class DNA(object):
 
 
 class Creature(Physics):
-    color_map = {'wandering': (242, 145, 247),
-                 'seeking food': (91, 242, 67),
-                 'seeking mate': (255, 178, 178)}
+    color_map = {'wandering': [242, 145, 200],
+                 'seeking food': [91, 200, 67],
+                 'seeking mate': [255, 178, 178]}
     def __init__(self, surface, pos, dna):
         super().__init__()
         self.surface = surface
@@ -75,7 +75,9 @@ class Creature(Physics):
         self.energy = 500.0
         self.age = 1.0
         self.alive = True
-        self.sex = random.choice(['male', 'female'])
+        self.sex = random.choice([True, False])
+        self.max_size = 20
+        self.growth_rate = 1.0/30.0
         self.max_speed = 10
         self.prev_acc = Vector2D(0, 0)
         self.state = "wandering"
@@ -116,18 +118,26 @@ class Creature(Physics):
             self.velocity.set_magnitude(self.max_speed)
 
     def seek_nearest(self, targets):
+        x_max = self.surface.get_width()
+        y_max = self.surface.get_height()
         min_dist = 9999999
         target = targets[0]
         for _target in targets:
             if self.position.distance(_target.position) < min_dist:
                 if _target is not self:
-                    min_dist = self.position.distance(_target.position)
-                    target = _target
+                    try:
+                        if _target.sex == self.sex ^ True and _target.state == "seeking mate":
+                            min_dist = self.position.distance(_target.position)
+                            target = _target
+
+                    except:
+                        min_dist = self.position.distance(_target.position)
+                        target = _target
         self.target = target
         self.seek()
         found = None
 
-        if self.position.distance(self.target.position) < 20:
+        if self.position.distance(self.target.position) < 20 and target is not self:
             found = target
 
         return found
@@ -159,16 +169,16 @@ class Creature(Physics):
             self.alive = False
 
         if self.alive:
-            self.energy -= 1
+            self.energy -= math.exp(self.growth_rate) / (math.exp(self.growth_rate) + 1) * 2.5
             self.age += 1
 
-            if self.energy < 500 and len(environment['food']) > 0:
+            if self.energy < 400 and len(environment['food']) > 0:
                 self.state = "seeking food"
                 found = self.seek_nearest(environment['food'])
                 if found:
                     self.eat_food(found)
 
-            elif self.age > 100 and self.energy > 500:
+            elif self.age > 100 and self.energy > 400:
                 self.state = "seeking mate"
                 found = self.seek_nearest(environment['creatures'])
                 if found:
@@ -177,6 +187,9 @@ class Creature(Physics):
                         return_objects.append(self.breed(found.dna))
 
                         self.alive = False
+                else:
+                    pass
+
             else:
                 self.state = 'wandering'
                 self.wander()
@@ -186,18 +199,17 @@ class Creature(Physics):
 
     def draw(self):
         color = self.color_map[self.state]
-        # if self.sex == "male":
-        #     color = (150, 150, 255)
-        # else:
-        #     color = (255, 150, 150)
+        if self.sex:
+            color[2] = 200
+        else:
+            color[2] = 50
+        size = self.max_size * (math.exp(self.age*self.growth_rate) / (math.exp(self.age*self.growth_rate) + 1))
         pointlist = []
-        pointlist.append((int(self.position.x + 25*math.cos(self.velocity.getTheta())), int(self.position.y + 25*math.sin(self.velocity.getTheta()))))
-        pointlist.append((int(self.position.x - 15*math.cos(self.velocity.getTheta())), int(self.position.y - 15*math.sin(self.velocity.getTheta()))))
-        pointlist.append((int(self.position.x - 15*math.cos(self.velocity.getTheta())), int(self.position.y + 15*math.sin(self.velocity.getTheta()))))
+        pointlist.append((int(self.position.x + size*math.cos(self.velocity.getTheta())), int(self.position.y + size*math.sin(self.velocity.getTheta()))))
+        pointlist.append((int(self.position.x - (size-5)*math.cos(self.velocity.getTheta())), int(self.position.y - (size-5)*math.sin(self.velocity.getTheta()))))
+        pointlist.append((int(self.position.x - (size-5)*math.cos(self.velocity.getTheta())), int(self.position.y + (size-5)*math.sin(self.velocity.getTheta()))))
         pg.draw.polygon(self.surface, color, pointlist, 1)
 
-        # if self.target:
-        #     pg.draw.line(self.surface, color, self.position(), self.target.position(), 1)
 
 class Food(object):
     def __init__(self, x, y, energy=None):
@@ -207,6 +219,7 @@ class Food(object):
         else:
             self.energy = 100
         self.eaten = False
+
 
 if __name__ == '__main__':
     if 'win' in sys.platform:
@@ -228,17 +241,12 @@ if __name__ == '__main__':
 
     environment = {"food": [Food(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)) for _ in range(10)],
                    "creatures": [Creature(canvas, Vector2D(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)), DNA()) for _ in range(2)]}
-    #
-    # environment = {"food": [Food(WIDTH/2, HEIGHT/2) for _ in range(1)],
-    #                "creatures": [
-    #                    Creature(canvas, Vector2D(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)), DNA()) for _
-    #                    in range(10)]}
 
     class Target:
         def __init__(self):
             self.position = Vector2D(0,0)
         def move(self, arg):
-            self.position = Vector2D(arg[0],arg[1])
+            self.position = Vector2D(arg[0], arg[1])
     target = Target()
     creature = Creature(canvas, Vector2D(WIDTH/2, HEIGHT/2), DNA())
     compass = Compass(canvas, Vector2D(WIDTH*0.1, HEIGHT*0.1), 'Creature Heading')
@@ -283,12 +291,12 @@ if __name__ == '__main__':
                 creature.alive = False
             if creature.alive:
                 new_creatures = creature.C_update(environment)
-                creature.draw();
+                creature.draw()
                 if new_creatures:
                         environment["creatures"] += new_creatures
 
             else:
-                environment['food'].append(Food(creature.position.x, creature.position.y, 200))
+                environment['food'].append(Food(creature.position.x, creature.position.y, 500))
                 environment['creatures'].pop(environment['creatures'].index(creature))
 
         # target.move(pg.mouse.get_pos())

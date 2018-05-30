@@ -69,7 +69,9 @@ while True:
     x = -(disp_w/2)
     while x < disp_w:
         try:
-            y = sin(x**2)
+            # This is the Function that gets graphed
+            gr = 1.0 / 2.0
+            y = (exp(exp(2.0/x)) / (exp(exp(2.0/x)) + 1))
             points.append((int(x * scale) + x_offset, int(y * -scale) + y_offset))
         except:
             pass
