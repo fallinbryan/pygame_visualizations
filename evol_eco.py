@@ -76,7 +76,7 @@ class Creature(Physics):
         self.age = 1.0
         self.alive = True
         self.sex = random.choice(['male', 'female'])
-        self.max_speed = 20
+        self.max_speed = 10
         self.prev_acc = Vector2D(0, 0)
         self.state = "wandering"
         self.target = None
@@ -92,9 +92,10 @@ class Creature(Physics):
         desired = desired.normalize()
         desired = desired.mul(self.position.distance(target.position))
         force = desired.sub(self.velocity)
+        force = force.mul(0.5)
         self.apply_force(force)
         mag = self.position.distance(target.position)
-        if mag < 20:
+        if mag < 10:
             self.targetReached = True
             mag = 0
         self.velocity.set_magnitude(mag * 0.5)
@@ -151,34 +152,37 @@ class Creature(Physics):
         self.seek()
 
     def C_update(self, environment):
-        return_object = None
+        return_objects = []
         if self.energy == 0:
             self.alive = False
-        if self.age > 5000.0:
+        if self.age > 1000.0:
             self.alive = False
 
         if self.alive:
-            self.energy -= 2
+            self.energy -= 1
             self.age += 1
 
-            if self.energy < 500:
+            if self.energy < 500 and len(environment['food']) > 0:
                 self.state = "seeking food"
                 found = self.seek_nearest(environment['food'])
                 if found:
                     self.eat_food(found)
 
-            elif self.age > 50 and self.energy > 500:
+            elif self.age > 100 and self.energy > 500:
                 self.state = "seeking mate"
                 found = self.seek_nearest(environment['creatures'])
                 if found:
-                    return_object = self.breed(found.dna)
-                    self.alive = False
+                    if found.state == "seeking mate":
+                        return_objects.append(self.breed(found.dna))
+                        return_objects.append(self.breed(found.dna))
+
+                        self.alive = False
             else:
                 self.state = 'wandering'
                 self.wander()
 
 
-        return return_object
+        return return_objects
 
     def draw(self):
         color = self.color_map[self.state]
@@ -196,9 +200,12 @@ class Creature(Physics):
         #     pg.draw.line(self.surface, color, self.position(), self.target.position(), 1)
 
 class Food(object):
-    def __init__(self, x, y):
+    def __init__(self, x, y, energy=None):
         self.position = Vector2D(x, y)
-        self.energy = 100
+        if energy:
+            self.energy = energy
+        else:
+            self.energy = 100
         self.eaten = False
 
 if __name__ == '__main__':
@@ -219,8 +226,8 @@ if __name__ == '__main__':
     WIDTH = canvas.get_width()
     HEIGHT = canvas.get_height()
 
-    environment = {"food": [Food(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)) for _ in range(100)],
-                   "creatures": [Creature(canvas, Vector2D(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)), DNA()) for _ in range(10)]}
+    environment = {"food": [Food(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)) for _ in range(10)],
+                   "creatures": [Creature(canvas, Vector2D(random.randrange(0, WIDTH), random.randrange(0, HEIGHT)), DNA()) for _ in range(2)]}
     #
     # environment = {"food": [Food(WIDTH/2, HEIGHT/2) for _ in range(1)],
     #                "creatures": [
@@ -263,21 +270,26 @@ if __name__ == '__main__':
 
         canvas.fill(disp_bg_color)
         if environment["food"]:
-            for food in environment["food"]:
+            for count, food in enumerate(environment["food"]):
+                if count > 50:
+                    food.eaten = True
                 if food.eaten:
                     environment["food"].pop(environment["food"].index(food))
                 if not food.eaten:
                     pg.draw.circle(canvas, (50, 255, 50), food.position.floor()(), 2, 0)
 
-            for creature in environment["creatures"]:
-                if creature.alive:
-                    new_creature = creature.C_update(environment)
-                    creature.draw();
-                    if new_creature:
-                        environment["creatures"].append(new_creature)
-                else:
-                    environment['food'].append(Food(creature.position.x, creature.position.y))
-                    environment['creatures'].pop(environment['creatures'].index(creature))
+        for count, creature in enumerate(environment["creatures"]):
+            if count > 50:
+                creature.alive = False
+            if creature.alive:
+                new_creatures = creature.C_update(environment)
+                creature.draw();
+                if new_creatures:
+                        environment["creatures"] += new_creatures
+
+            else:
+                environment['food'].append(Food(creature.position.x, creature.position.y, 200))
+                environment['creatures'].pop(environment['creatures'].index(creature))
 
         # target.move(pg.mouse.get_pos())
         # pg.draw.circle(canvas, (255, 255, 255), (target.position.x, target.position.y), 20, 1)
@@ -295,5 +307,5 @@ if __name__ == '__main__':
         # canvas.blit(accell_text, (WIDTH - 500, HEIGHT - 100))
         pg.display.flip()
 
-        # pg.time.delay(100)
+        pg.time.delay(50)
 
