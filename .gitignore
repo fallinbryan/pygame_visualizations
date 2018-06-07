@@ -1,3 +1,7 @@
 *.pickle
 .idea/
+build/
+.ipynb_checkpoints/
+*.c
+*.pyd
 __pycache__/
