@@ -38,7 +38,11 @@ print('Time to generate set: {}'.format(time.clock() - start))
 
 start = time.clock()
 for element in MAP:
-    canvas.set_at(element[0], element[1])
+    try:
+        # canvas.set_at(element[0], element[1])
+        canvas.set_at(element[0], element[1])
+    except:
+        breakpoints = 'here'
 print('Time to draw set: {}'.format(time.clock() - start))
 pg.display.flip()
 scale = 1
@@ -61,7 +65,7 @@ while True:
             print('Time to generate set: {}'.format(time.clock() - start))
             start = time.clock()
             for element in MAP:
-                pixel(canvas, element[1], element[0])
+                canvas.set_at(element[0], element[1])
             print('Time to draw set: {}'.format(time.clock() - start))
             pg.display.flip()
 
